@@ -1,0 +1,26 @@
+{
+  "short_name": "OKM 3D",
+  "name": "OKM 3D Ground Scanner & Visualizer",
+  "description": "سیستم اسکن سه‌بعدی زمین، رادار عمق‌سنج و تحلیل ژئوفیزیک با AI",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "display": "standalone",
+  "orientation": "portrait",
+  "dir": "rtl",
+  "lang": "fa"
+}

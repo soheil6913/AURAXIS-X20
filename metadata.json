@@ -1,0 +1,8 @@
+{
+  "name": "AURAXIS X20",
+  "description": "AURAXIS X20 — Gold Radar X20 — Advanced Tactical Geophysical AI: Multi-sensor intelligence fusion, magnetic anomaly detection & subsurface 3D visualizer.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

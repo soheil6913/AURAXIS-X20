@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#020617" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="AURAXIS X20" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>AURAXIS X20 — Gold Radar X20 Tactical Geophysical AI</title>
+    <meta name="description" content="AURAXIS X20 — Gold Radar X20 — Advanced Tactical Geophysical AI: Multi-sensor intelligence fusion, magnetic anomaly detection & subsurface 3D visualizer." />
+    <meta property="og:title" content="AURAXIS X20 — Gold Radar X20 Tactical Geophysical AI" />
+    <meta property="og:description" content="AURAXIS X20 — Gold Radar X20 — Advanced Tactical Geophysical AI: Multi-sensor intelligence fusion, magnetic anomaly detection & subsurface 3D visualizer." />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(err => {
+            console.log('SW registration failed: ', err);
+          });
+        });
+      }
+    </script>
+  </body>
+</html>
+
