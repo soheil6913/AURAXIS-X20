@@ -20,7 +20,9 @@ import {
   Activity,
   Play,
   Pause,
-  ShieldCheck
+  ShieldCheck,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 interface VisualizerTabProps {
@@ -50,6 +52,7 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
   const [heatmapPalette, setHeatmapPalette] = useState<HeatmapPalette>('spectral');
 
   // Subsurface Depth Slicing State
+  const [isDepthSliceOpen, setIsDepthSliceOpen] = useState<boolean>(false);
   const [sliceZ, setSliceZ] = useState<number | null>(null);
   const [sliceZMode, setSliceZMode] = useState<DepthSliceMode>('cut');
   const [depthRange, setDepthRange] = useState<[number, number]>([0.5, 2.5]);
@@ -331,6 +334,21 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
               )}
             </button>
 
+            {/* Subsurface Depth Slice Toggle Button */}
+            <button
+              onClick={() => setIsDepthSliceOpen(!isDepthSliceOpen)}
+              title={isDepthSliceOpen ? 'بستن پنل برش عمقی زیرسطحی' : 'باز کردن پنل برش عمقی زیرسطحی'}
+              className={`px-3 py-1.5 rounded-lg border font-bold transition flex items-center gap-1.5 ${
+                isDepthSliceOpen
+                  ? 'bg-gradient-to-r from-cyan-500/25 via-blue-500/20 to-amber-500/20 border-cyan-400 text-cyan-300 shadow-md shadow-cyan-500/20'
+                  : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
+              }`}
+            >
+              <Sliders className={`w-3.5 h-3.5 ${sliceZ !== null ? 'text-cyan-400' : 'text-amber-400'}`} />
+              <span>برش عمق {sliceZ !== null ? `(${sliceZ.toFixed(1)}m)` : ''}</span>
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isDepthSliceOpen ? 'rotate-180 text-cyan-400' : 'text-slate-400'}`} />
+            </button>
+
             {/* Fullscreen Toggle */}
             <button
               onClick={() => setIsFullscreen(!isFullscreen)}
@@ -423,53 +441,90 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
               </div>
             )}
             <div className="flex-1 w-full h-full min-h-0 relative rounded-2xl overflow-hidden">
+              {/* Collapsed Compact Floating Badge - Positioned cleanly on left HUD so right zoom buttons are 100% visible */}
+              {!isDepthSliceOpen && (
+                <button
+                  onClick={() => setIsDepthSliceOpen(true)}
+                  title="باز کردن کارت برش عمقی زیرسطحی (Open Depth Slice Panel)"
+                  className="absolute top-14 left-3 z-20 flex items-center gap-2 bg-slate-900/95 backdrop-blur-md border border-slate-700/80 hover:border-cyan-400 text-slate-200 hover:text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-2xl transition-all duration-200 pointer-events-auto hover:scale-105 group"
+                >
+                  <Sliders className="w-4 h-4 text-amber-400 group-hover:rotate-12 transition-transform" />
+                  <span>برش عمقی زیرسطحی</span>
+                  {sliceZ !== null ? (
+                    <span className="text-[10px] font-mono font-bold bg-cyan-500/20 text-cyan-300 px-1.5 py-0.5 rounded border border-cyan-500/30">
+                      {sliceZ.toFixed(1)}m
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded">خاموش</span>
+                  )}
+                  {isDepthSweeping && (
+                    <span className="flex items-center gap-1 text-[10px] text-amber-400 animate-pulse font-mono">
+                      <Play className="w-2.5 h-2.5" />
+                      <span>پیمایش</span>
+                    </span>
+                  )}
+                  <ChevronDown className="w-3.5 h-3.5 text-cyan-400" />
+                </button>
+              )}
+
               {/* Interactive Floating Subsurface Depth Slicing Overlay */}
-              <div className="absolute top-3 right-3 z-30 max-w-xs sm:max-w-sm bg-slate-900/90 border border-slate-700/80 rounded-2xl p-3 shadow-2xl backdrop-blur-md space-y-2.5 dir-rtl text-xs transition-all pointer-events-auto">
-                {/* Overlay Header */}
-                <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-2">
-                  <div className="flex items-center gap-1.5 font-bold text-cyan-400">
-                    <Sliders className="w-4 h-4 text-amber-400" />
-                    <span>برش عمقی زیرسطحی (Depth Slice)</span>
-                  </div>
+              {isDepthSliceOpen && (
+                <div className="absolute top-3 right-3 sm:right-16 z-30 max-w-xs sm:max-w-sm bg-slate-900/95 border border-slate-700/80 rounded-2xl p-3 shadow-2xl backdrop-blur-md space-y-2.5 dir-rtl text-xs transition-all pointer-events-auto">
+                  {/* Overlay Header */}
+                  <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-2">
+                    <div className="flex items-center gap-1.5 font-bold text-cyan-400">
+                      <Sliders className="w-4 h-4 text-amber-400" />
+                      <span>برش عمقی زیرسطحی</span>
+                    </div>
 
-                  <div className="flex items-center gap-1">
-                    {/* Auto Sweep Play/Pause Button */}
-                    <button
-                      onClick={() => {
-                        if (sliceZ === null) setSliceZ(0);
-                        setIsDepthSweeping(!isDepthSweeping);
-                      }}
-                      className={`px-2 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition ${
-                        isDepthSweeping
-                          ? 'bg-amber-400 text-slate-950 animate-pulse'
-                          : 'bg-slate-800 text-slate-300 hover:text-white'
-                      }`}
-                      title="پیمایش خودکار عمق (Auto Depth Sweep)"
-                    >
-                      {isDepthSweeping ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-                      <span>{isDepthSweeping ? 'توقف' : 'پیمایش'}</span>
-                    </button>
+                    <div className="flex items-center gap-1">
+                      {/* Auto Sweep Play/Pause Button */}
+                      <button
+                        onClick={() => {
+                          if (sliceZ === null) setSliceZ(0);
+                          setIsDepthSweeping(!isDepthSweeping);
+                        }}
+                        className={`px-2 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition ${
+                          isDepthSweeping
+                            ? 'bg-amber-400 text-slate-950 animate-pulse'
+                            : 'bg-slate-800 text-slate-300 hover:text-white'
+                        }`}
+                        title="پیمایش خودکار عمق (Auto Depth Sweep)"
+                      >
+                        {isDepthSweeping ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+                        <span>{isDepthSweeping ? 'توقف' : 'پیمایش'}</span>
+                      </button>
 
-                    {/* Toggle Depth Slicing On/Off */}
-                    <button
-                      onClick={() => {
-                        if (sliceZ === null) {
-                          setSliceZ(1.0);
-                        } else {
-                          setSliceZ(null);
-                          setIsDepthSweeping(false);
-                        }
-                      }}
-                      className={`px-2 py-1 rounded-lg text-[11px] font-bold border transition ${
-                        sliceZ !== null
-                          ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow'
-                          : 'bg-slate-800 border-slate-700 text-slate-400'
-                      }`}
-                    >
-                      {sliceZ !== null ? 'فعال' : 'خاموش'}
-                    </button>
+                      {/* Toggle Depth Slicing On/Off */}
+                      <button
+                        onClick={() => {
+                          if (sliceZ === null) {
+                            setSliceZ(1.0);
+                          } else {
+                            setSliceZ(null);
+                            setIsDepthSweeping(false);
+                          }
+                        }}
+                        className={`px-2 py-1 rounded-lg text-[11px] font-bold border transition ${
+                          sliceZ !== null
+                            ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow'
+                            : 'bg-slate-800 border-slate-700 text-slate-400'
+                        }`}
+                      >
+                        {sliceZ !== null ? 'فعال' : 'خاموش'}
+                      </button>
+
+                      {/* Collapse / Close Button to reveal underlying zoom controls */}
+                      <button
+                        onClick={() => setIsDepthSliceOpen(false)}
+                        className="px-2 py-1 rounded-lg text-[11px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 flex items-center gap-1 transition"
+                        title="بستن و کوچک‌کردن کارت برش عمقی برای دسترسی به دکمه‌های زوم و چرخش"
+                      >
+                        <ChevronUp className="w-3.5 h-3.5 text-amber-400" />
+                        <span>بستن</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
 
                 {sliceZ !== null ? (
                   <div className="space-y-2.5">
@@ -606,8 +661,9 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
                   </div>
                 )}
               </div>
+            )}
 
-              <ThreeVisualizer
+            <ThreeVisualizer
                 gridData={viewedScan.gridData}
                 phaseData={viewedScan.phaseData}
                 width={viewedScan.width}
