@@ -142,7 +142,7 @@ export const Header: React.FC<HeaderProps> = ({
                   onAutoConnect();
                 }
               }}
-              title="ترمینال پیشرفته اتصال بلوتوث فیزیکی، ماژول‌های رادار و کابل USB"
+              title="ترمینال اتصال بلوتوث و ماژول‌های رادار"
               className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all hover:scale-102 ${getConnectionBadgeColor()}`}
             >
               {getConnectionIcon()}

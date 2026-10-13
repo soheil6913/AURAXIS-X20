@@ -129,7 +129,7 @@ export const BluetoothTacticalModal: React.FC<BluetoothTacticalModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base sm:text-lg font-black text-white">اتصال بلوتوث فیزیکی و ماژول رادار (Real Hardware)</h3>
+                <h3 className="text-base sm:text-lg font-black text-white">اتصال بلوتوث و ماژول رادار</h3>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-400/20 text-cyan-300 border border-cyan-400/30">
                   BLE 5.0 / SPP
                 </span>
@@ -168,7 +168,7 @@ export const BluetoothTacticalModal: React.FC<BluetoothTacticalModalProps> = ({
                     {hwState.isConnected ? (
                       <span className="text-emerald-400 font-mono flex items-center gap-1.5">
                         <CheckCircle2 className="w-4 h-4" />
-                        سخت‌افزار واقعی فیزیکی متصل است ({hwState.deviceName})
+                        سخت‌افزار متصل است ({hwState.deviceName})
                       </span>
                     ) : (
                       <span className="text-slate-300">سخت‌افزار متصل نیست (قطع ارتباط)</span>
@@ -204,75 +204,56 @@ export const BluetoothTacticalModal: React.FC<BluetoothTacticalModalProps> = ({
           </div>
 
           {/* Action Trigger Buttons */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {/* Real Web Bluetooth Connect */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Bluetooth Connect Button */}
             <button
               onClick={handleConnectBle}
               disabled={isConnecting}
-              className={`p-3.5 rounded-2xl border flex flex-col items-center justify-center text-center gap-2 transition-all font-bold text-xs ${
+              className={`p-4 rounded-2xl border flex flex-col items-center justify-center text-center gap-2 transition-all font-bold text-xs ${
                 hwState.isConnected && hwState.connectionType === 'BLE'
                   ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300'
                   : 'bg-gradient-to-br from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white border-cyan-400/30 shadow-lg shadow-cyan-500/20'
               }`}
             >
-              <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center">
-                <Bluetooth className={`w-4 h-4 ${isConnecting ? 'animate-spin' : ''}`} />
+              <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
+                <Bluetooth className={`w-5 h-5 ${isConnecting ? 'animate-spin' : ''}`} />
               </div>
               <div>
-                <div>اتصال بلوتوث فیزیکی (BLE)</div>
-                <div className="text-[10px] text-cyan-200/80 font-normal mt-0.5">جستجوی ماژول‌های HC-05, HM-10, ESP32</div>
+                <div className="text-sm font-black">اتصال بلوتوث (روشن کردن و جفت‌سازی)</div>
+                <div className="text-[11px] text-cyan-200/80 font-normal mt-0.5">درخواست روشن‌شدن بلوتوث گوشی و اتصال به ماژول</div>
               </div>
             </button>
 
-            {/* Real Web Serial USB Connect */}
+            {/* Serial USB Connect */}
             <button
               onClick={handleConnectUsb}
               disabled={isConnecting}
-              className={`p-3.5 rounded-2xl border flex flex-col items-center justify-center text-center gap-2 transition-all font-bold text-xs ${
+              className={`p-4 rounded-2xl border flex flex-col items-center justify-center text-center gap-2 transition-all font-bold text-xs ${
                 hwState.isConnected && hwState.connectionType === 'USB_SERIAL'
                   ? 'bg-amber-500/20 border-amber-400 text-amber-300'
                   : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
               }`}
             >
-              <div className="w-8 h-8 rounded-xl bg-amber-400/10 text-amber-400 flex items-center justify-center">
-                <Usb className="w-4 h-4" />
+              <div className="w-9 h-9 rounded-xl bg-amber-400/10 text-amber-400 flex items-center justify-center">
+                <Usb className="w-5 h-5" />
               </div>
               <div>
-                <div>اتصال با کابل USB OTG</div>
-                <div className="text-[10px] text-slate-400 font-normal mt-0.5">درایور سخت‌افزاری CH340 / CP2102</div>
+                <div className="text-sm font-black">اتصال با کابل USB OTG</div>
+                <div className="text-[11px] text-slate-400 font-normal mt-0.5">درایور سخت‌افزاری CH340 / CP2102</div>
               </div>
             </button>
 
-            {/* Disconnect or Simulator Fallback */}
-            {hwState.isConnected ? (
-              <button
-                onClick={handleDisconnect}
-                className="p-3.5 rounded-2xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-300 flex flex-col items-center justify-center text-center gap-2 transition font-bold text-xs"
-              >
-                <div className="w-8 h-8 rounded-xl bg-red-500/20 text-red-400 flex items-center justify-center">
-                  <WifiOff className="w-4 h-4" />
-                </div>
-                <div>
-                  <div>قطع اتصال سخت‌افزار</div>
-                  <div className="text-[10px] text-red-400/80 font-normal mt-0.5">پایان تبادل داده فیزیکی</div>
-                </div>
-              </button>
-            ) : (
-              <button
-                onClick={() => {
-                  onSelectSimulator();
-                  onClose();
-                }}
-                className="p-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-amber-300 flex flex-col items-center justify-center text-center gap-2 transition font-bold text-xs"
-              >
-                <div className="w-8 h-8 rounded-xl bg-amber-400/10 text-amber-400 flex items-center justify-center">
-                  <Zap className="w-4 h-4" />
-                </div>
-                <div>
-                  <div>فعال‌سازی شبیه‌ساز نرم‌افزاری</div>
-                  <div className="text-[10px] text-slate-400 font-normal mt-0.5">برای تست بدون نیاز به دستگاه</div>
-                </div>
-              </button>
+            {/* Disconnect when connected */}
+            {hwState.isConnected && (
+              <div className="sm:col-span-2">
+                <button
+                  onClick={handleDisconnect}
+                  className="w-full p-3 rounded-2xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-300 flex items-center justify-center text-center gap-2 transition font-bold text-xs"
+                >
+                  <WifiOff className="w-4 h-4 text-red-400" />
+                  <span>قطع اتصال سخت‌افزار</span>
+                </button>
+              </div>
             )}
           </div>
 
@@ -448,11 +429,10 @@ export const BluetoothTacticalModal: React.FC<BluetoothTacticalModalProps> = ({
 
             {showHelp && (
               <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 text-slate-300 mt-2 space-y-1 leading-relaxed">
-                <p className="font-bold text-amber-400">راهنمای اتصال بلوتوث فیزیکی در اندروید:</p>
-                <p>۱. بلوتوث و مکان‌یابی (Location/GPS) گوشی خود را روشن کنید.</p>
+                <p className="font-bold text-amber-400">راهنمای اتصال بلوتوث در گوشی:</p>
+                <p>۱. هنگام لمس دکمه اتصال بلوتوث، درخواست روشن شدن بلوتوث گوشی به صورت خودکار برای سیستم ارسال می‌شود.</p>
                 <p>۲. دستگاه رادار یا ماژول HC-05 / HM-10 را روشن کنید.</p>
-                <p>۳. در مرورگر Google Chrome یا Edge دکمه «اتصال بلوتوث فیزیکی» را بزنید و نام دستگاه را از لیست پاپ‌آپ انتخاب کنید.</p>
-                <p>۴. در صورت نیاز به فعال‌سازی قابلیت‌های آزمایشی، در آدرس‌بار کروم عبارت <code className="text-cyan-300 font-mono">chrome://flags/#enable-web-bluetooth</code> را باز کرده و آن را Enabled کنید.</p>
+                <p>۳. دستگاه موردنظر را از پنجره اسکن انتخاب کرده تا تبادل داده بلادرنگ آغاز گردد.</p>
               </div>
             )}
           </div>

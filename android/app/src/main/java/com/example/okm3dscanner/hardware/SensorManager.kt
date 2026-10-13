@@ -94,6 +94,33 @@ class SensorManager(private val context: Context? = null) {
         return bluetoothManager?.adapter ?: BluetoothAdapter.getDefaultAdapter()
     }
 
+    @SuppressLint("MissingPermission")
+    fun enableBluetoothOnDevice(): Boolean {
+        val adapter = getBluetoothAdapter() ?: return false
+        return if (!adapter.isEnabled) {
+            try {
+                // Directly request adapter enable
+                val turnedOn = adapter.enable()
+                if (turnedOn) {
+                    _tvStatus.value = "بلوتوث گوشی با موفقیت روشن شد"
+                }
+                turnedOn
+            } catch (e: Exception) {
+                // If direct enable requires user prompt in newer Android, broadcast prompt intent
+                context?.let { ctx ->
+                    try {
+                        val enableBtIntent = android.content.Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+                        enableBtIntent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        ctx.startActivity(enableBtIntent)
+                    } catch (_: Exception) {}
+                }
+                false
+            }
+        } else {
+            true
+        }
+    }
+
     /**
      * Start BLE / Classic discovery for physical devices
      */
@@ -106,9 +133,8 @@ class SensorManager(private val context: Context? = null) {
         }
 
         if (!adapter.isEnabled) {
-            _tvStatus.value = "لطفاً بلوتوث دستگاه را روشن کنید"
-            _connectionState.value = ConnectionMode.DISCONNECTED
-            return
+            _tvStatus.value = "در حال روشن کردن بلوتوث گوشی..."
+            enableBluetoothOnDevice()
         }
 
         _connectionState.value = ConnectionMode.SCANNING_BT

@@ -270,7 +270,7 @@ export const ScanTab: React.FC<ScanTabProps> = ({
                   className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 text-xs font-bold flex items-center gap-1.5 transition"
                 >
                   <Bluetooth className="w-3.5 h-3.5" />
-                  <span>ترمینال بلوتوث واقعی</span>
+                  <span>ترمینال بلوتوث</span>
                 </button>
               )}
             </div>
@@ -289,13 +289,13 @@ export const ScanTab: React.FC<ScanTabProps> = ({
                 </div>
                 <div>
                   <div className="text-xs font-bold text-white flex items-center gap-2">
-                    <span>وضعیت اتصال فیزیکی:</span>
+                    <span>وضعیت اتصال:</span>
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono ${
                       connectionState === 'BLUETOOTH' || connectionState === 'USB'
                         ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                         : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                     }`}>
-                      {connectionState === 'BLUETOOTH' ? 'REAL BLE CONNECTED' : connectionState === 'USB' ? 'USB OTG CONNECTED' : 'SIMULATOR MODE'}
+                      {connectionState === 'BLUETOOTH' ? 'BLE CONNECTED' : connectionState === 'USB' ? 'USB OTG CONNECTED' : 'DISCONNECTED'}
                     </span>
                   </div>
                   <div className="text-[11px] text-slate-400 mt-0.5 font-mono">
@@ -310,7 +310,7 @@ export const ScanTab: React.FC<ScanTabProps> = ({
                   className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs flex items-center gap-1.5 transition shadow-lg shadow-cyan-500/20 w-full sm:w-auto justify-center"
                 >
                   <Bluetooth className="w-4 h-4" />
-                  <span>اتصال سنسور واقعی (BLE / USB)</span>
+                  <span>اتصال سنسور (بلوتوث / کابل USB)</span>
                 </button>
               )}
             </div>

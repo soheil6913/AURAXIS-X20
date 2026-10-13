@@ -160,9 +160,27 @@ class BluetoothHardwareEngine {
     }
 
     try {
-      this.addLog('SYS', 'در حال فراخوانی دیالوگ اسکن بلوتوث سخت‌افزاری...');
-      this.state.statusText = 'در حال جستجوی دستگاه فیزیکی...';
+      this.addLog('SYS', 'در حال صدور فرمان روشن‌سازی بلوتوث گوشی و فراخوانی دیالوگ جستجو...');
+      this.state.statusText = 'در حال جستجوی دستگاه و روشن‌سازی بلوتوث...';
       this.emitState();
+
+      // 1. Send signal to native host (Android WebView or PWA container) to enable Bluetooth hardware
+      if (typeof window !== 'undefined') {
+        // Post message to parent / window for native bridge
+        window.postMessage({ type: 'ENABLE_BLUETOOTH', source: 'AURAXIS_BLE' }, '*');
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({ type: 'ENABLE_BLUETOOTH', source: 'AURAXIS_BLE' }, '*');
+        }
+        // Direct call to Android JavascriptInterface if available (e.g. AndroidHost.enableBluetooth())
+        const androidBridge = (window as any).Android || (window as any).AndroidHost || (window as any).AndroidBluetooth;
+        if (androidBridge && typeof androidBridge.enableBluetooth === 'function') {
+          try {
+            androidBridge.enableBluetooth();
+          } catch (_e) {
+            // ignore bridge call failures
+          }
+        }
+      }
 
       // Request Bluetooth device with all common radar & sensor service UUIDs
       const navBt = (navigator as any).bluetooth;
