@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.Copy
+import org.gradle.api.tasks.Exec
 // Root build.gradle.kts
 buildscript {
     repositories {
@@ -24,7 +26,7 @@ tasks.register<Delete>("clean") {
 }
 
 // Build Vite/React web assets using npm
-val buildWebAssets by tasks.registering(Exec) {
+val buildWebAssets = tasks.register<Exec>("buildWebAssets") {
     description = "Transpiles Vite/React web application assets"
     group = "build"
     workingDir = rootDir.parentFile
@@ -32,7 +34,7 @@ val buildWebAssets by tasks.registering(Exec) {
 }
 
 // Copy transpiled Vite dist/ output into android/app/src/main/assets/web
-val copyWebAssets by tasks.registering(Copy) {
+val copyWebAssets = tasks.register<Copy>("copyWebAssets") {
     description = "Copies transpiled web assets into the Android app assets directory"
     group = "build"
     dependsOn(buildWebAssets)
