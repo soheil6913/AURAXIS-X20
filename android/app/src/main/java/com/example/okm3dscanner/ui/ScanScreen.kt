@@ -100,8 +100,8 @@ fun ScanScreen(viewModel: VisualizerViewModel, onNavigateToAi: () -> Unit = {}) 
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     val indicatorColor = when (connectionState) {
-                        ConnectionMode.DISCONNECTED -> Color.Red
-                        ConnectionMode.CONNECTING_USB, ConnectionMode.CONNECTING_BT -> Color.Yellow
+                        ConnectionMode.DISCONNECTED, ConnectionMode.ERROR -> Color.Red
+                        ConnectionMode.CONNECTING_USB, ConnectionMode.CONNECTING_BT, ConnectionMode.SCANNING_BT -> Color.Yellow
                         ConnectionMode.USB -> Color.Green
                         ConnectionMode.BLUETOOTH -> CyberCyan
                         ConnectionMode.SIMULATOR -> CyberGold
