@@ -42,6 +42,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallModal, setShowInstallModal] = useState<boolean>(false);
+  const isNativeApp = /; wv\)/.test(navigator.userAgent);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -90,7 +91,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 backdrop-blur-md bg-opacity-95">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex flex-wrap items-center justify-between gap-2 py-2">
           
           {/* Logo & Branding */}
           <div className="flex items-center gap-3">
@@ -108,7 +109,7 @@ export const Header: React.FC<HeaderProps> = ({
                   TACTICAL AI
                 </span>
               </div>
-              <p className="text-xs text-slate-400">Gold Radar X20 — فیوژن هوشمند سنسورها و رادار زمین</p>
+              <p className="hidden sm:block text-xs text-slate-400">Gold Radar X20 — فیوژن هوشمند سنسورها و رادار زمین</p>
             </div>
           </div>
 
@@ -117,7 +118,7 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Mobile App Install Button */}
             <button
               onClick={handleInstallClick}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black text-xs shadow-md shadow-amber-400/20 hover:scale-105 transition"
+              className={`${isNativeApp ? 'hidden' : 'flex'} items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black text-xs shadow-md shadow-amber-400/20 hover:scale-105 transition`}
             >
               <Smartphone className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">نصب روی گوشی</span>
@@ -143,10 +144,10 @@ export const Header: React.FC<HeaderProps> = ({
                 }
               }}
               title="ترمینال اتصال بلوتوث و ماژول‌های رادار"
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all hover:scale-102 ${getConnectionBadgeColor()}`}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all hover:scale-102 min-w-0 ${getConnectionBadgeColor()}`}
             >
               {getConnectionIcon()}
-              <span>{connectionStatus}</span>
+              <span className="truncate max-w-[9rem] sm:max-w-none">{connectionStatus}</span>
             </button>
           </div>
         </div>

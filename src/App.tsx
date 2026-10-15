@@ -331,7 +331,7 @@ export default function App() {
   // If embed mode (e.g. from Android WebView or iframe)
   if (isEmbed) {
     return (
-      <div className="w-full h-screen bg-slate-950 text-slate-100 flex flex-col font-sans p-2 sm:p-3 overflow-y-auto dir-rtl" dir="rtl">
+      <div className="w-full h-dvh bg-slate-950 text-slate-100 flex flex-col font-sans p-2 sm:p-3 overflow-y-auto dir-rtl" dir="rtl">
         <VisualizerTab
           viewedScan={viewedScan}
           onSaveScan={handleSaveScanRecord}
@@ -344,7 +344,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-amber-400 selection:text-slate-950 dir-rtl" dir="rtl">
+    <div className="min-h-dvh bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-amber-400 selection:text-slate-950 dir-rtl" dir="rtl">
       
       {/* Header */}
       <Header

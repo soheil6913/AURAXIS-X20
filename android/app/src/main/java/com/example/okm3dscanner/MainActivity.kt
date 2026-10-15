@@ -32,6 +32,7 @@ class MainActivity : ComponentActivity() {
 
         webView.settings.apply {
             javaScriptEnabled = true
+            textZoom = 100
             domStorageEnabled = true
             allowFileAccess = false
             allowContentAccess = false
