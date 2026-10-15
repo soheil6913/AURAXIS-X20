@@ -46,8 +46,8 @@ export default function App() {
   });
 
   // Connection Manager
-  const [connectionState, setConnectionState] = useState<ConnectionMode>('SIMULATOR');
-  const [connectionStatus, setConnectionStatus] = useState<string>('شبیه‌ساز (Simulator)');
+  const [connectionState, setConnectionState] = useState<ConnectionMode>('DISCONNECTED');
+  const [connectionStatus, setConnectionStatus] = useState<string>('سخت‌افزار متصل نیست');
   const [isMuted, setIsMuted] = useState<boolean>(false);
 
   // Scan Configuration State
@@ -150,7 +150,7 @@ export default function App() {
 
     const unsubState = bluetoothHardware.onStateChange((state) => {
       if (state.isConnected) {
-        if (state.connectionType === 'BLE') {
+        if (state.connectionType === 'BLE' || state.connectionType === 'BT_CLASSIC') {
           setConnectionState('BLUETOOTH');
           setConnectionStatus(`بلوتوث فیزیکی: ${state.deviceName || 'متصل'}`);
         } else if (state.connectionType === 'USB_SERIAL') {
@@ -209,11 +209,21 @@ export default function App() {
 
   // Record single pulse step in scan mode
   const handleRecordStep = useCallback(() => {
-    // Generate realistic ground response with occasional anomaly peak
+    // Record only from a live source: real hardware, or the explicit demo simulator.
+    const isDemo = connectionState === 'SIMULATOR';
+    const hasLiveSource = isDemo || connectionState === 'BLUETOOTH' || connectionState === 'USB';
+    if (!hasLiveSource) {
+      setConnectionStatus('برای ثبت نقطه ابتدا سخت‌افزار را متصل کنید');
+      return;
+    }
+    if (!isDemo && Date.now() - bluetoothHardware.state.lastPacketTime > 3000) {
+      setConnectionStatus('داده تازه‌ای از سنسور دریافت نشده است');
+      return;
+    }
+
     let currentPulseAdc = adcValue;
     let currentPulsePhase = phaseShift;
 
-    // Simulate high peak near center
     const totalPoints = gridWidth * gridLength;
     const currentIdx = activeScanData.length;
 
@@ -225,11 +235,11 @@ export default function App() {
       const centerY = Math.floor(gridLength / 2);
       const dist = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
 
-      if (dist < 1.8) {
+      if (isDemo && dist < 1.8) {
         // High Gold Peak!
         currentPulseAdc = 850 + Math.floor(Math.random() * 60);
         currentPulsePhase = 45 + Math.floor(Math.random() * 10);
-      } else if (dist >= 1.8 && dist < 3.2) {
+      } else if (isDemo && dist >= 1.8 && dist < 3.2) {
         // Cavity Drop surrounding
         currentPulseAdc = 170 + Math.floor(Math.random() * 30);
         currentPulsePhase = -40 + Math.floor(Math.random() * 10);
@@ -263,7 +273,7 @@ export default function App() {
         audioEngine.playScanCompleteChime();
       }
     }
-  }, [adcValue, phaseShift, gridWidth, gridLength, activeScanData.length, scanPattern]);
+  }, [adcValue, phaseShift, gridWidth, gridLength, activeScanData.length, scanPattern, connectionState]);
 
   // Cancel / Discard active scan
   const handleCancelScan = () => {
@@ -286,7 +296,9 @@ export default function App() {
       gridData: activeScanData,
       phaseData: activePhaseData,
       maxDepthMeters: 4.5,
-      notes: 'اسکن ثبت‌شده با درایور مگنتومتر OKM'
+      notes: connectionState === 'SIMULATOR'
+        ? 'داده نمایشی (شبیه‌ساز) — اندازه‌گیری واقعی نیست'
+        : 'اسکن ثبت‌شده با درایور مگنتومتر OKM'
     };
 
     setSavedScans((prev) => [newScan, ...prev]);

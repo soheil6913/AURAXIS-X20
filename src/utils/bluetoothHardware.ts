@@ -30,7 +30,7 @@ export interface RawLogEntry {
 
 export interface HardwareState {
   isConnected: boolean;
-  connectionType: 'BLE' | 'USB_SERIAL' | 'NONE';
+  connectionType: 'BLE' | 'BT_CLASSIC' | 'USB_SERIAL' | 'NONE';
   deviceName: string | null;
   deviceId: string | null;
   rssi: number | null;
@@ -40,6 +40,15 @@ export interface HardwareState {
   bytesReceived: number;
   lastPacketTime: number;
   statusText: string;
+}
+
+/** A Bluetooth device reported by the Android native bridge (window.AuraxisBT). */
+export interface NativeBtDevice {
+  name: string;
+  address: string;
+  /** paired devices: classic (SPP) / ble / dual / unknown; scan results are always 'ble' */
+  type: 'classic' | 'ble' | 'dual' | 'unknown';
+  rssi?: number;
 }
 
 // Known GATT Service & Characteristic UUIDs for hardware sensors
@@ -73,6 +82,12 @@ class BluetoothHardwareEngine {
   private recentPacketsTimestamps: number[] = [];
   private rateInterval: any = null;
 
+  // Native (Android WebView) bridge state
+  private nativeActive = false;
+  private nativeDeviceCallbacks: Set<(d: NativeBtDevice) => void> = new Set();
+  private nativePermissionCallbacks: Set<(granted: boolean) => void> = new Set();
+  private nativeScanCallbacks: Set<(active: boolean) => void> = new Set();
+
   // Listeners
   private telemetryCallbacks: Set<(data: TelemetryPacket) => void> = new Set();
   private logCallbacks: Set<(log: RawLogEntry) => void> = new Set();
@@ -94,6 +109,164 @@ class BluetoothHardwareEngine {
 
   constructor() {
     this.startRateMonitor();
+    this.attachNativeBridge();
+  }
+
+  // ------------------------------------------------------------------
+  // Android native bridge (window.AuraxisBT): real Bluetooth Classic SPP
+  // and BLE UART, used because WebView has no Web Bluetooth / Web Serial.
+  // ------------------------------------------------------------------
+
+  private get nativeBridge(): any {
+    return typeof window !== 'undefined' ? (window as any).AuraxisBT : undefined;
+  }
+
+  private attachNativeBridge() {
+    if (typeof window === 'undefined' || !this.nativeBridge) return;
+    (window as any).__auraxisBT = (json: string) => {
+      try {
+        this.handleNativeEvent(JSON.parse(json));
+      } catch {
+        // ignore malformed native events
+      }
+    };
+  }
+
+  public isNativeBluetoothAvailable(): boolean {
+    try {
+      return !!this.nativeBridge && !!this.nativeBridge.isAvailable();
+    } catch {
+      return false;
+    }
+  }
+
+  public onNativeDevice(cb: (d: NativeBtDevice) => void) {
+    this.nativeDeviceCallbacks.add(cb);
+    return () => this.nativeDeviceCallbacks.delete(cb);
+  }
+
+  public onNativePermission(cb: (granted: boolean) => void) {
+    this.nativePermissionCallbacks.add(cb);
+    return () => this.nativePermissionCallbacks.delete(cb);
+  }
+
+  public onNativeScanState(cb: (active: boolean) => void) {
+    this.nativeScanCallbacks.add(cb);
+    return () => this.nativeScanCallbacks.delete(cb);
+  }
+
+  public nativeHasPermissions(): boolean {
+    try { return !!this.nativeBridge?.hasPermissions(); } catch { return false; }
+  }
+
+  public nativeRequestPermissions() {
+    try { this.nativeBridge?.requestPermissions(); } catch { /* ignore */ }
+  }
+
+  public nativeEnable() {
+    try { this.nativeBridge?.enableBluetooth(); } catch { /* ignore */ }
+  }
+
+  public nativeOpenSettings() {
+    try { this.nativeBridge?.openBluetoothSettings(); } catch { /* ignore */ }
+  }
+
+  public nativeStartScan() {
+    try { this.nativeBridge?.startScan(); } catch { /* ignore */ }
+  }
+
+  public nativeStopScan() {
+    try { this.nativeBridge?.stopScan(); } catch { /* ignore */ }
+  }
+
+  public nativePairedDevices(): NativeBtDevice[] {
+    try {
+      const list = JSON.parse(this.nativeBridge?.getPairedDevices() || '[]');
+      return Array.isArray(list) ? list : [];
+    } catch {
+      return [];
+    }
+  }
+
+  /** mode: 'SPP' = Bluetooth Classic (device must be paired), 'BLE' = Bluetooth Low Energy */
+  public connectNative(address: string, mode: 'SPP' | 'BLE', name?: string) {
+    const bridge = this.nativeBridge;
+    if (!bridge) throw new Error('پل بلوتوث بومی اندروید در دسترس نیست');
+    this.state.statusText = `در حال اتصال به ${name || address}...`;
+    this.emitState();
+    this.addLog('SYS', `درخواست اتصال ${mode === 'BLE' ? 'BLE' : 'Classic SPP'} به ${name || 'دستگاه'} (${address})`);
+    bridge.connect(address, mode);
+  }
+
+  private handleNativeEvent(ev: any) {
+    switch (ev?.t) {
+      case 'state': {
+        if (ev.connecting) {
+          this.state.statusText = String(ev.status || 'در حال اتصال...');
+          this.emitState();
+          this.addLog('SYS', this.state.statusText);
+        } else if (ev.connected) {
+          this.nativeActive = true;
+          this.incomingBuffer = '';
+          this.state.isConnected = true;
+          this.state.connectionType = ev.type === 'BLE' ? 'BLE' : 'BT_CLASSIC';
+          this.state.deviceName = ev.name || 'دستگاه بلوتوث';
+          this.state.deviceId = ev.address || null;
+          this.state.rssi = null;
+          this.state.statusText = `متصل به بلوتوث فیزیکی (${this.state.deviceName})`;
+          this.emitState();
+          this.addLog('SYS', String(ev.status || 'متصل شد'));
+        } else {
+          this.nativeActive = false;
+          this.state.isConnected = false;
+          this.state.connectionType = 'NONE';
+          this.state.deviceName = null;
+          this.state.deviceId = null;
+          this.state.rssi = null;
+          this.state.packetsPerSecond = 0;
+          this.state.statusText = 'قطع ارتباط (Disconnected)';
+          this.emitState();
+          this.addLog('SYS', String(ev.status || 'قطع ارتباط'));
+        }
+        break;
+      }
+      case 'data': {
+        const text = String(ev.text ?? '');
+        const hex = typeof ev.hex === 'string' ? ev.hex : undefined;
+        this.state.bytesReceived += hex ? hex.split(' ').length : text.length;
+        this.state.lastPacketTime = Date.now();
+        this.incomingBuffer += text;
+        let idx: number;
+        while ((idx = this.incomingBuffer.search(/[\r\n;]/)) !== -1) {
+          const line = this.incomingBuffer.slice(0, idx).trim();
+          this.incomingBuffer = this.incomingBuffer.slice(idx + 1);
+          if (line.length > 0) this.processPacketLine(line, hex);
+        }
+        if (this.incomingBuffer.length > 2048) {
+          this.incomingBuffer = this.incomingBuffer.slice(-512);
+        }
+        break;
+      }
+      case 'device':
+        this.nativeDeviceCallbacks.forEach((cb) =>
+          cb({
+            name: String(ev.name || ''),
+            address: String(ev.address || ''),
+            type: 'ble',
+            rssi: typeof ev.rssi === 'number' ? ev.rssi : undefined
+          })
+        );
+        break;
+      case 'perm':
+        this.nativePermissionCallbacks.forEach((cb) => cb(!!ev.granted));
+        break;
+      case 'scan':
+        this.nativeScanCallbacks.forEach((cb) => cb(!!ev.active));
+        break;
+      case 'error':
+        this.addLog('SYS', String(ev.message || 'خطای بلوتوث'));
+        break;
+    }
   }
 
   public isWebBluetoothSupported(): boolean {
@@ -294,7 +467,7 @@ class BluetoothHardwareEngine {
       this.state.isConnected = true;
       this.state.connectionType = 'BLE';
       this.state.statusText = `متصل به بلوتوث فیزیکی (${this.state.deviceName})`;
-      this.state.rssi = -55; // Initial baseline
+      this.state.rssi = null; // Web Bluetooth gives no RSSI here; never invent one
       this.emitState();
       this.addLog('SYS', 'جریان داده‌های زنده سنسور با موفقیت متصل و همگام شد.');
 
@@ -370,7 +543,8 @@ class BluetoothHardwareEngine {
     if (clean.startsWith('$OKM') || clean.startsWith('$RADAR')) {
       const parts = clean.split(',');
       if (parts.length >= 3) {
-        const adc = parseInt(parts[1], 10) || 512;
+        const adc = parseInt(parts[1], 10);
+        if (isNaN(adc)) return null; // malformed packet: drop it, never invent a reading
         const phase = parseInt(parts[2], 10) || 0;
         const heading = parts[3] ? parseFloat(parts[3]) : undefined;
         const ax = parts[4] ? parseFloat(parts[4]) : undefined;
@@ -500,6 +674,12 @@ class BluetoothHardwareEngine {
     this.addLog('TX', formatted.trim());
 
     try {
+      if (this.nativeActive && this.nativeBridge) {
+        const ok = !!this.nativeBridge.send(formatted);
+        if (!ok) this.addLog('SYS', 'خطا: ارسال دستور ناموفق بود (اتصال برقرار نیست).');
+        return ok;
+      }
+
       if (this.state.connectionType === 'BLE' && this.rxCharacteristic) {
         const data = this.textEncoder.encode(formatted);
         if (this.rxCharacteristic.writeValueWithoutResponse) {
@@ -534,6 +714,10 @@ class BluetoothHardwareEngine {
   }
 
   private handleDisconnect(reason: string) {
+    if (this.nativeActive) {
+      this.nativeActive = false;
+      try { this.nativeBridge?.disconnect(); } catch { /* ignore */ }
+    }
     if (this.gattServer?.connected) {
       try {
         this.gattServer.disconnect();

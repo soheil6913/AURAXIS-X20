@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   bluetoothHardware,
   HardwareState,
-  RawLogEntry
+  RawLogEntry,
+  NativeBtDevice
 } from '../utils/bluetoothHardware';
 import {
   Bluetooth,
@@ -55,7 +56,7 @@ export const BluetoothTacticalModal: React.FC<BluetoothTacticalModalProps> = ({
     const unsubState = bluetoothHardware.onStateChange((newState) => {
       setHwState(newState);
       if (newState.isConnected) {
-        if (newState.connectionType === 'BLE') {
+        if (newState.connectionType === 'BLE' || newState.connectionType === 'BT_CLASSIC') {
           onSelectHardwareConnected('BLUETOOTH');
         } else if (newState.connectionType === 'USB_SERIAL') {
           onSelectHardwareConnected('USB');
@@ -80,9 +81,55 @@ export const BluetoothTacticalModal: React.FC<BluetoothTacticalModalProps> = ({
     }
   }, [logs, autoScroll]);
 
+  // Native Android bridge (real Bluetooth Classic SPP + BLE) device picker
+  const isNative = bluetoothHardware.isNativeBluetoothAvailable();
+  const [showPicker, setShowPicker] = useState<boolean>(false);
+  const [pairedDevices, setPairedDevices] = useState<NativeBtDevice[]>([]);
+  const [foundDevices, setFoundDevices] = useState<NativeBtDevice[]>([]);
+  const [isScanning, setIsScanning] = useState<boolean>(false);
+
+  useEffect(() => {
+    const offDevice = bluetoothHardware.onNativeDevice((d) => {
+      setFoundDevices((prev) => (prev.some((p) => p.address === d.address) ? prev : [...prev, d]));
+    });
+    const offScan = bluetoothHardware.onNativeScanState((active) => setIsScanning(active));
+    const offPerm = bluetoothHardware.onNativePermission((granted) => {
+      if (granted) {
+        bluetoothHardware.nativeEnable();
+        setPairedDevices(bluetoothHardware.nativePairedDevices());
+      }
+    });
+    return () => {
+      offDevice();
+      offScan();
+      offPerm();
+    };
+  }, []);
+
+  const openNativePicker = () => {
+    setShowPicker(true);
+    setFoundDevices([]);
+    if (!bluetoothHardware.nativeHasPermissions()) {
+      bluetoothHardware.nativeRequestPermissions();
+      return;
+    }
+    bluetoothHardware.nativeEnable();
+    setPairedDevices(bluetoothHardware.nativePairedDevices());
+  };
+
+  const connectNativeDevice = (d: NativeBtDevice, mode: 'SPP' | 'BLE') => {
+    bluetoothHardware.nativeStopScan();
+    bluetoothHardware.connectNative(d.address, mode, d.name);
+    setShowPicker(false);
+  };
+
   if (!isOpen) return null;
 
   const handleConnectBle = async () => {
+    if (isNative) {
+      openNativePicker();
+      return;
+    }
     setIsConnecting(true);
     try {
       await bluetoothHardware.connectPhysicalBle();
@@ -114,7 +161,7 @@ export const BluetoothTacticalModal: React.FC<BluetoothTacticalModalProps> = ({
     setCustomCommand('');
   };
 
-  const isBleSupported = bluetoothHardware.isWebBluetoothSupported();
+  const isBleSupported = isNative || bluetoothHardware.isWebBluetoothSupported();
   const isSerialSupported = bluetoothHardware.isWebSerialSupported();
 
   return (
@@ -210,7 +257,7 @@ export const BluetoothTacticalModal: React.FC<BluetoothTacticalModalProps> = ({
               onClick={handleConnectBle}
               disabled={isConnecting}
               className={`p-4 rounded-2xl border flex flex-col items-center justify-center text-center gap-2 transition-all font-bold text-xs ${
-                hwState.isConnected && hwState.connectionType === 'BLE'
+                hwState.isConnected && (hwState.connectionType === 'BLE' || hwState.connectionType === 'BT_CLASSIC')
                   ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300'
                   : 'bg-gradient-to-br from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white border-cyan-400/30 shadow-lg shadow-cyan-500/20'
               }`}
@@ -256,6 +303,102 @@ export const BluetoothTacticalModal: React.FC<BluetoothTacticalModalProps> = ({
               </div>
             )}
           </div>
+
+          {/* Native device picker (Android app): paired Classic SPP + BLE scan */}
+          {isNative && showPicker && (
+            <div className="bg-slate-950 p-4 rounded-2xl border border-cyan-500/30 space-y-3">
+              <div className="flex items-center justify-between text-xs font-bold">
+                <span className="text-cyan-300 flex items-center gap-2">
+                  <Bluetooth className="w-4 h-4" />
+                  انتخاب دستگاه بلوتوث
+                </span>
+                <button onClick={() => setShowPicker(false)} className="text-slate-500 hover:text-slate-300">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <div className="text-[11px] text-slate-400">
+                  دستگاه‌های جفت‌شده (برای ماژول‌های HC-05 / HC-06 با بلوتوث کلاسیک SPP):
+                </div>
+                {pairedDevices.length === 0 ? (
+                  <div className="text-[11px] text-slate-500 bg-slate-900 rounded-xl p-3 leading-relaxed">
+                    دستگاه جفت‌شده‌ای پیدا نشد. ابتدا ماژول را روشن کنید و در تنظیمات بلوتوث گوشی جفت کنید
+                    (رمز معمولاً 1234 یا 0000 است)، سپس این پنجره را دوباره باز کنید.
+                  </div>
+                ) : (
+                  pairedDevices.map((d) => (
+                    <div key={d.address} className="flex items-center justify-between gap-2 bg-slate-900 rounded-xl p-2.5 border border-slate-800">
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-white truncate">{d.name || 'دستگاه بدون نام'}</div>
+                        <div className="text-[10px] text-slate-500 font-mono">{d.address}</div>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {d.type !== 'ble' && (
+                          <button
+                            onClick={() => connectNativeDevice(d, 'SPP')}
+                            className="px-2.5 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 text-[11px] font-bold"
+                          >
+                            SPP
+                          </button>
+                        )}
+                        {d.type !== 'classic' && (
+                          <button
+                            onClick={() => connectNativeDevice(d, 'BLE')}
+                            className="px-2.5 py-1.5 rounded-lg bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[11px] font-bold"
+                          >
+                            BLE
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+                <button
+                  onClick={() => bluetoothHardware.nativeOpenSettings()}
+                  className="w-full p-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 text-[11px] font-bold"
+                >
+                  باز کردن تنظیمات بلوتوث گوشی (برای جفت‌سازی)
+                </button>
+              </div>
+
+              <div className="space-y-2 pt-1 border-t border-slate-800">
+                <div className="flex items-center justify-between">
+                  <div className="text-[11px] text-slate-400">
+                    جستجوی BLE (برای ماژول‌هایی مثل HM-10 یا Nordic UART):
+                  </div>
+                  <button
+                    onClick={() => {
+                      setFoundDevices([]);
+                      bluetoothHardware.nativeStartScan();
+                    }}
+                    disabled={isScanning}
+                    className="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 text-[11px] font-bold disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isScanning ? 'animate-spin' : ''}`} />
+                    <span>{isScanning ? 'در حال جستجو...' : 'جستجو'}</span>
+                  </button>
+                </div>
+                {foundDevices.map((d) => (
+                  <div key={d.address} className="flex items-center justify-between gap-2 bg-slate-900 rounded-xl p-2.5 border border-slate-800">
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-white truncate">{d.name || 'دستگاه BLE بدون نام'}</div>
+                      <div className="text-[10px] text-slate-500 font-mono">
+                        {d.address}
+                        {d.rssi !== undefined ? ` • ${d.rssi} dBm` : ''}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => connectNativeDevice(d, 'BLE')}
+                      className="px-2.5 py-1.5 rounded-lg bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[11px] font-bold shrink-0"
+                    >
+                      اتصال BLE
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Quick Hardware Commands */}
           <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
@@ -418,7 +561,7 @@ export const BluetoothTacticalModal: React.FC<BluetoothTacticalModalProps> = ({
               <div className={`p-2 rounded-lg border flex items-center gap-2 ${
                 isBleSupported ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-400' : 'bg-red-950/20 border-red-500/30 text-red-400'
               }`}>
-                <span>{isBleSupported ? '✓ Web Bluetooth API فعال است' : '✗ Web Bluetooth پشتیبانی نمی‌شود'}</span>
+                <span>{isNative ? '✓ بلوتوث بومی اندروید (SPP و BLE)' : isBleSupported ? '✓ Web Bluetooth API فعال است' : '✗ Web Bluetooth پشتیبانی نمی‌شود'}</span>
               </div>
               <div className={`p-2 rounded-lg border flex items-center gap-2 ${
                 isSerialSupported ? 'bg-cyan-950/20 border-cyan-500/30 text-cyan-400' : 'bg-slate-900 border-slate-800 text-slate-500'

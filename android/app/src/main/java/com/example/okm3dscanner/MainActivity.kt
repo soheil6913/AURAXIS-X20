@@ -2,6 +2,7 @@ package com.example.okm3dscanner
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.os.Bundle
 import android.webkit.GeolocationPermissions
 import android.webkit.MimeTypeMap
@@ -19,9 +20,12 @@ import java.io.IOException
 class MainActivity : ComponentActivity() {
 
     private lateinit var webView: WebView
+    private var bridge: BluetoothBridge? = null
 
-    private val locationPermission =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    private val permissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+            bridge?.onPermissionResult()
+        }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,7 +42,26 @@ class MainActivity : ComponentActivity() {
             allowContentAccess = false
         }
 
+        // Real Bluetooth (Classic SPP + BLE UART) exposed to the web app as window.AuraxisBT
+        val btBridge = BluetoothBridge(this, webView) { perms -> permissionLauncher.launch(perms) }
+        bridge = btBridge
+        webView.addJavascriptInterface(btBridge, "AuraxisBT")
+
         webView.webViewClient = object : WebViewClient() {
+            // The JS bridge must only ever be reachable from our own bundled pages:
+            // external links open in the system browser instead of inside this WebView.
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                val url = request.url
+                if (url.host == HOST) return false
+                if (url.scheme == "http" || url.scheme == "https") {
+                    try {
+                        startActivity(Intent(Intent.ACTION_VIEW, url))
+                    } catch (_: Exception) {
+                    }
+                }
+                return true
+            }
+
             override fun shouldInterceptRequest(
                 view: WebView,
                 request: WebResourceRequest
@@ -80,7 +103,7 @@ class MainActivity : ComponentActivity() {
             }
         })
 
-        locationPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION))
 
         if (savedInstanceState != null) webView.restoreState(savedInstanceState)
         else webView.loadUrl("https://$HOST/")
@@ -92,6 +115,8 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        bridge?.release()
+        bridge = null
         webView.destroy()
         super.onDestroy()
     }
